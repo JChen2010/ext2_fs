@@ -12,13 +12,14 @@
 unsigned char *disk;
 
 void print_directory(const struct ext2_inode *inode, unsigned int print_dots){
-
     int i_blk_idx;
     for (i_blk_idx = 0; i_blk_idx < 12; i_blk_idx++){
         if (inode->i_block[i_blk_idx]){
             struct ext2_dir_entry_2 *dir_entry;
             unsigned char *data_block = disk + (inode->i_block[i_blk_idx] * EXT2_BLOCK_SIZE);
             unsigned char *curr_pos = data_block;
+
+
             while (curr_pos < (data_block + EXT2_BLOCK_SIZE)){
                 dir_entry = (struct ext2_dir_entry_2 *)curr_pos;
 
@@ -37,10 +38,28 @@ void print_directory(const struct ext2_inode *inode, unsigned int print_dots){
     }
 }
 
+void print_file_name(char *disk_path){
+    /*
+    * scrap the the target directory name from the absolute disk path
+    */
+    // strip the trailing slash and shrink path length by 1 (if any)
+
+    int disk_path_len = strlen(disk_path);
+    if (disk_path_len > 1 && disk_path[disk_path_len - 1] == '/') {
+        disk_path[disk_path_len - 1] = '\0';
+        disk_path_len -= 1;
+    }
+    // loop the path backwards to find the starting position of the dir
+    int offset_len = disk_path_len;
+    while (offset_len > 0 && disk_path[offset_len - 1] != '/'){
+        offset_len--;
+    }
+
+    printf("%s\n", (char *) disk_path + offset_len);
+}
+
 int main(int argc, char **argv) {
-    unsigned int inode_idx, print_dots, disk_path_len = 0;
-    char target_dir[EXT2_NAME_LEN];
-    char *disk_path;
+    unsigned int inode_idx, path_arg_id, print_dots = 0;
 
     if (argc != 3 && argc != 4) {
         fprintf(stderr, "Usage: ext2_ls <image file name> <absolute path on disk> <[-a]>\n");
@@ -56,58 +75,41 @@ int main(int argc, char **argv) {
         * If 4 args are passed in:
         * i.e. argv[1] => image path ; argv[2] => -a argv[3] => disk path
         */
+        int disk_path_len = 0;
+
         if (argc == 3) {
             disk_path_len = strlen(argv[2]);
-            disk_path = malloc(disk_path_len);
-            strcpy(disk_path, argv[2]);
+            path_arg_id = 2;
         } else { // Check if the [-a] option is entered
             if (strcmp(argv[2], "-a") == 0){
                 disk_path_len = strlen(argv[3]);
-                disk_path = malloc(disk_path_len);
-                strcpy(disk_path, argv[3]);
                 // flag for print dir function
                 print_dots = 1;
+                path_arg_id = 3;
             } else {
                 return ENOENT;
             }
-
         }
 
-        /*
-        * scrap the the target directory name from the absolute disk path
-        */
-        // strip the trailing slash and shrink path length by 1 (if any)
-        if (disk_path_len > 1 && disk_path[disk_path_len - 1] == '/') {
-            disk_path[disk_path_len - 1] = '\0';
-            disk_path_len -= 1;
-        }
-        // loop the path backwards to find the starting position of the dir
-        int target_dir_pos = disk_path_len - 1;
-        while (target_dir_pos > 0 && disk_path[target_dir_pos] != '/'){
-            target_dir_pos--;
-        }
-        int target_dir_len = (disk_path_len - 1) - target_dir_pos;
-        strncpy(target_dir, disk_path + target_dir_pos, target_dir_len);
-        target_dir[target_dir_len] = '\0';
-
-        //DEBUG MSG
-        //printf("target file path: %s\n", target_dir);
-
-        inode_idx = get_inode_idx_by_path(disk_path);
-        free(disk_path);
+        inode_idx = get_inode_idx_by_path(argv[path_arg_id]);
     }
 
     if (inode_idx > 0){
         struct ext2_inode *inode = get_inode_by_idx(inode_idx);
-        // make sure it's a directory type inode
-        if (inode && (inode->i_mode & EXT2_S_IFDIR)){
-            print_directory(inode, print_dots);
-        } else if (inode) {
-            printf("%s\n", target_dir);
+        if (inode){
+            // check whether the inode is a dir or file
+            if (inode->i_mode & EXT2_S_IFDIR){
+                print_directory(inode, print_dots);
+            } else {
+                print_file_name(argv[path_arg_id]);
+            }
         } else {
-            printf("file or dir not found: %s\n", target_dir);
+            printf("No such file or directory\n");
             return ENOENT;
         }
+    } else {
+        printf("No such file or directory\n");
+        return ENOENT;
     }
 
     return 0;

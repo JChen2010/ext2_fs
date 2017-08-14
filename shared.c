@@ -29,13 +29,17 @@ int disk_init(const char *image_path){
 // Find the inode by inode index in the inode table
 struct ext2_inode *get_inode_by_idx(unsigned int inode_idx){
   struct ext2_group_desc *gd = (struct ext2_group_desc *)(disk + 2 * 1024);
-  char *inode_table = (char *)(disk + EXT2_BLOCK_SIZE *gd->bg_inode_table);
+  char *inode_table = (char *)(disk + EXT2_BLOCK_SIZE * gd->bg_inode_table);
   int inode_size = sizeof(struct ext2_inode);
   return (struct ext2_inode *)(inode_table + inode_size * (inode_idx - 1));
 }
 
 // Find inode index by the absolute disk path
 unsigned int get_inode_idx_by_path(const char *disk_path){
+  if (disk_path[0] != '/'){ // abs path must start with '/'
+    return -1;
+  }
+
   unsigned inode_idx = EXT2_ROOT_INO; // start from the inode of root
   struct ext2_dir_entry_2 *dir_entry;
   char dir_name[256];
@@ -51,7 +55,7 @@ unsigned int get_inode_idx_by_path(const char *disk_path){
     }
     dir_name[idx] = '\0'; // end the string
 
-    if (strlen(dir_name) != 0){
+    if (strlen(dir_name) > 0){
       struct ext2_inode *curr_inode = get_inode_by_idx(inode_idx);
       dir_entry = get_dir_entry_in_inode(curr_inode, dir_name);
 
@@ -59,7 +63,8 @@ unsigned int get_inode_idx_by_path(const char *disk_path){
         inode_idx = dir_entry->inode;
 
         if ((curr < disk_path_len) && (curr_inode->i_mode & EXT2_S_IFDIR) == 0){
-          printf("get_inode_idx_by_path encountered a file instead of a dir.");
+          //DEBUG MSG
+          //printf("get_inode_idx_by_path encountered a file instead of a dir.");
           return 0;
         }
       } else {
@@ -102,7 +107,11 @@ struct ext2_dir_entry_2 *get_dir_entry_in_inode(const struct ext2_inode *inode,
         }
       }
     }
+
+
   }
+
+  return NULL;
 }
 
 struct ext2_dir_entry_2 *get_entry_in_block(const unsigned char *data_block,
