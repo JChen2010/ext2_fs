@@ -4,14 +4,13 @@ RM= rm -vf
 CFLAGS= -Wall -g
 .PHONY: all clean
 
-all : ext2_ls ext2_cp
-ext2_ls : ext2_ls.o
-		$(CC) $(CFLAGS) -o ext2_ls $^
-ext2_cp : ext2_cp.o
-		$(CC) $(CFLAGS) -o ext2_cp $^
+all : ext2_ls
+shared: shared.c shared.h
+		$(CC) $(CFLAGS) -c shared.c
+ext2_ls : shared
+		$(CC) $(CFLAGS) ext2_ls.c shared.o -o ext2_ls
 
-%.o : %.c ext2.h shared.h
-		$(CC) $(CFLAGS) -c $<
+
 
 clean :
 		$(RM) *.o ext2_ls ext2_cp *~

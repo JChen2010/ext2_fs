@@ -25,7 +25,7 @@ void print_directory(const struct ext2_inode *inode, unsigned int print_dots){
                 if (dir_entry->name_len > 0){
                     if (print_dots){
                         printf("%.*s\n", dir_entry->name_len, dir_entry->name);
-                    } else {
+                    } else if (strncmp(dir_entry->name, "..",  dir_entry->name_len) != 0) {
                         printf("%.*s\n", dir_entry->name_len, dir_entry->name);
                     }
                 }
@@ -91,9 +91,10 @@ int main(int argc, char **argv) {
         target_dir[target_dir_len] = '\0';
 
         //DEBUG MSG
-        printf("target file path: %s\n", target_dir);
+        //printf("target file path: %s\n", target_dir);
 
         inode_idx = get_inode_idx_by_path(disk_path);
+        free(disk_path);
     }
 
     if (inode_idx > 0){

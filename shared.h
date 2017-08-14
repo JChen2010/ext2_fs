@@ -2,6 +2,7 @@
 #define SHARED_H
 
 #include <errno.h>
+#include <string.h>
 #include "ext2.h"
 
 extern unsigned char *disk;
@@ -12,9 +13,9 @@ int disk_init(const char *image_path);
 // get inode
 unsigned int get_inode_idx_by_path(const char *disk_path);
 struct ext2_inode *get_inode_by_idx(unsigned int inode_idx);
-struct ext2_dir_entry_2 *get_dir_entry_by_inode(const struct ext2_inode *inode,
+struct ext2_dir_entry_2 *get_dir_entry_in_inode(const struct ext2_inode *inode,
   const char *dir_entry_name);
-struct ext2_dir_entry_2 *get_entry_by_block(const unsigned char *data_block,
+struct ext2_dir_entry_2 *get_entry_in_block(const unsigned char *data_block,
   const char *dir_entry_name);
 
 #endif

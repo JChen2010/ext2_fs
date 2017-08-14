@@ -50,3 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Add your custom files here
+ext2_ls
+ext2_ln
+ext2_mkdir
+ext2_rm
+ext2_cp

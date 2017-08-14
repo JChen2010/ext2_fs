@@ -51,9 +51,9 @@ unsigned int get_inode_idx_by_path(const char *disk_path){
     }
     dir_name[idx] = '\0'; // end the string
 
-    if (strlen(dir_name) > 0){
-      struct ext2_inode curr_inode = get_inode_by_idx(inode_idx);
-      dir_entry = get_dir_entry_by_inode(curr_inode, dir_name);
+    if (strlen(dir_name) != 0){
+      struct ext2_inode *curr_inode = get_inode_by_idx(inode_idx);
+      dir_entry = get_dir_entry_in_inode(curr_inode, dir_name);
 
       if (dir_entry != NULL){
         inode_idx = dir_entry->inode;
@@ -71,8 +71,8 @@ unsigned int get_inode_idx_by_path(const char *disk_path){
   return inode_idx;
 }
 
-// Find the next dir entry by an inode
-struct ext2_dir_entry_2 *get_dir_entry_by_inode(const struct ext2_inode *inode,
+// Find the dir_entry by name inside an inode
+struct ext2_dir_entry_2 *get_dir_entry_in_inode(const struct ext2_inode *inode,
   const char *dir_entry_name){
 
   struct ext2_dir_entry_2 *dir_entry;
@@ -84,20 +84,20 @@ struct ext2_dir_entry_2 *get_dir_entry_by_inode(const struct ext2_inode *inode,
     // first 12 direct block pointer
     if (i_blk_idx < 12 && inode->i_block[i_blk_idx]){
       unsigned char *data_block = disk + (inode->i_block[i_blk_idx] * EXT2_BLOCK_SIZE);
-      dir_entry = get_entry_by_block(data_block, dir_entry_name);
-      if (dir_entry){
+      dir_entry = get_entry_in_block(data_block, dir_entry_name);
+      if (dir_entry && strncmp(dir_entry->name, dir_entry_name, dir_entry->name_len) == 0){
         return dir_entry;
       }
     }
 
     // one single direct block pointer
     if (i_blk_idx == 12 && inode->i_block[i_blk_idx]){
-      unsigned int *data_blocks = disk + (inode->i_block[i_blk_idx] * EXT2_BLOCK_SIZE);
+      unsigned int *data_blocks = (unsigned int *)(disk + (inode->i_block[i_blk_idx] * EXT2_BLOCK_SIZE));
 
       for (blk_ptr_idx = 0; blk_ptr_idx < indirect_len; blk_ptr_idx++){
         unsigned char *data_block = disk + (data_blocks[blk_ptr_idx] * EXT2_BLOCK_SIZE);
-        dir_entry = get_entry_by_block(data_block, dir_entry_name);
-        if (dir_entry){
+        dir_entry = get_entry_in_block(data_block, dir_entry_name);
+        if (dir_entry && strncmp(dir_entry->name, dir_entry_name, dir_entry->name_len) == 0){
           return dir_entry;
         }
       }
@@ -105,7 +105,7 @@ struct ext2_dir_entry_2 *get_dir_entry_by_inode(const struct ext2_inode *inode,
   }
 }
 
-struct ext2_dir_entry_2 *get_entry_by_block(const unsigned char *data_block,
+struct ext2_dir_entry_2 *get_entry_in_block(const unsigned char *data_block,
   const char *dir_entry_name){
   struct ext2_dir_entry_2 *dir_entry;
   const unsigned char *curr = data_block;
