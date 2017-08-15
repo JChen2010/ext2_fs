@@ -28,7 +28,7 @@ int disk_init(const char *image_path){
 
 // Find the inode by inode index in the inode table
 struct ext2_inode *get_inode_by_idx(unsigned int inode_idx){
-  struct ext2_group_desc *gd = (struct ext2_group_desc *)(disk + 2 * 1024);
+  struct ext2_group_desc *gd = (struct ext2_group_desc *)(disk + 2 * EXT2_BLOCK_SIZE);
   char *inode_table = (char *)(disk + EXT2_BLOCK_SIZE * gd->bg_inode_table);
   int inode_size = sizeof(struct ext2_inode);
   return (struct ext2_inode *)(inode_table + inode_size * (inode_idx - 1));
@@ -132,3 +132,93 @@ struct ext2_dir_entry_2 *get_entry_in_block(const unsigned char *data_block,
 
   return NULL;
 }
+
+// Create an empty inode for use
+unsigned int create_inode(){
+  unsigned int last_inode = sb->s_free_inodes_count;
+  unsigned int curr_inode = 0;
+
+  while (curr_inode < last_inode){
+    struct ext2_group_desc *gd = (struct ext2_group_desc *)(disk +
+      (2 + curr_inode) * EXT2_BLOCK_SIZE);
+
+    // look for any free blocks
+    if (gd->bg_free_inodes_count > 0){
+      unsigned int inode_idx;
+
+      unsigned char *bitmap = (unsigned char *) (disk +
+        EXT2_BLOCK_SIZE * gd->bg_inode_bitmap);
+
+      // look for the next free inode
+      int curr_bit = -1;
+      unsigned int i, j;
+      for (i = 0; i < 4; i++){
+        for (j = 0; j < 8; j++){
+          if (!(bitmap[i] >> j) & 1){
+            curr_bit = i * 8 + j;
+            break;
+          }
+        }
+      }
+
+      if (curr_bit == -1){
+        return 0;
+      }
+
+      inode_idx = curr_bit + 1;
+      unsigned char * single_byte = bitmap + curr_bit / 8;
+      *single_byte |= 1 << ( curr_bit % 8 );
+
+      gd->bg_free_inodes_count -= 1;
+      return inode_idx;
+    }
+    curr_inode += sb->s_inodes_per_group;
+  }
+
+  return 0;
+}
+
+unsigned int create_block(){
+  unsigned int last_block= sb->s_free_blocks_count;
+  unsigned int curr_block = 0;
+
+  while (curr_block < last_block){
+    struct ext2_group_desc *gd = (struct ext2_group_desc *)(disk +
+      (2 + curr_block) * EXT2_BLOCK_SIZE);
+
+    // look for any free blocks
+    if (gd->bg_free_blocks_count > 0){
+      unsigned int block_idx;
+
+      unsigned char *bitmap = (unsigned char *) (disk +
+        EXT2_BLOCK_SIZE * gd->bg_block_bitmap);
+
+      // look for the next free block
+      int curr_bit = -1;
+      unsigned int i, j;
+      for (i = 0; i < 4; i++){
+        for (j = 0; j < 8; j++){
+          if (!(bitmap[i] >> j) & 1){
+            curr_bit = i * 8 + j;
+            break;
+          }
+        }
+      }
+
+      if (curr_bit == -1){
+        return 0;
+      }
+
+      block_idx = curr_bit + 1;
+      unsigned char * single_byte = bitmap + curr_bit / 8;
+      *single_byte |= 1 << ( curr_bit % 8 );
+
+      gd->bg_free_blocks_count -= 1;
+      return block_idx;
+    }
+    curr_block += sb->s_blocks_per_group;
+  }
+
+  return 0;
+}
+

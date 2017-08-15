@@ -18,4 +18,10 @@ struct ext2_dir_entry_2 *get_dir_entry_in_inode(const struct ext2_inode *inode,
 struct ext2_dir_entry_2 *get_entry_in_block(const unsigned char *data_block,
   const char *dir_entry_name);
 
+// create inode
+unsigned int create_inode();
+
+// create block
+unsigned int create_block();
+
 #endif
