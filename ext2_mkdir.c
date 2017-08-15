@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 
     // strip the trailing slash and shrink path length by 1 (if any)
     if (offset_len > 1 && parent_path[offset_len - 1] == '/') {
-        disk_path[offset_len - 1] = '\0';
+        parent_path[offset_len - 1] = '\0';
         offset_len -= 1;
     }
     // get the inode of the parent dir of the new dir
